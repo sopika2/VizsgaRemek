@@ -1,0 +1,143 @@
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+#search1_card {
+  position: fixed;
+  top: 52px;
+  width: 500px;  height: 400px;
+  left: 0; right: 0;
+  margin: auto;
+  z-index: 1000;
+  overflow: auto;  overflow-y: auto;
+  opacity:0.95; 
+  display: none;              /* alapban rejtett */
+  box-shadow: 11px 12px 21px 1px rgba(0,0,0,0.79);
+}
+
+#menu1_card {
+  position: fixed;
+  top: 52px;
+  width: auto;
+  left: 5px;
+  z-index: 1000;
+  overflow: auto; overflow-y: auto;
+  display: none;                                        /* alapban rejtett */
+  box-shadow: 11px 12px 21px 1px rgba(0,0,0,0.79);
+}
+
+ul.xmenu {list-style-type: none;
+          line-height: 115%;
+          font-family : Verdana, tahoma;
+          color:  #07272e;
+          letter-spacing: 1px;
+          font-size: 14px;
+          padding: 0;   /* így nem tart fenn helyet a listapöttynek */ }
+
+li.xmenu { background-color: white; 
+          margin: 1px;
+          padding: 4px;  }
+
+li.xmenu:hover{ cursor: pointer;
+                color: white;
+                background-color:#00758F;   } 
+
+li.xmenu img  { padding-right: 16px; }       
+
+div.fejléc   {  background-color: #00758F; }
+div.lábléc   {  background-color: #00758F; height: 40px;}
+
+div.button  { 
+  box-sizing: border-box; float:left; display: table-cell;
+  background-repeat: no-repeat;
+  background-position: 50% 90%; 
+  background-color: #ffffcc;
+  width:  80px; height: 64px;
+  margin:  4px; padding: 3px;
+  border-radius: 3px; 
+  cursor: pointer;  
+  vertical-align: bottom;
+  border: 1px solid #D7D7D7;   
+  text-align: center; font-weight:bold; font-size:14px; } 
+
+div.button.keres    { background-image: url(images/find-32.png);  }   /* html: class="button keres"  */
+div.button.info     { background-image: url(images/info-32.png);  }
+div.button.help     { background-image: url(images/help-32.png);  }
+div.button.reload   { background-image: url(images/reload-32.png);}
+div.button.torol    { background-image: url(images/torol-32.png); }
+div.button.uj       { background-image: url(images/add-32.png);   } 
+div.button.cancel   { background-image: url(images/no-32.png);    } 
+div.button.ok       { background-image: url(images/ok-32.png);    }
+div.button.login    { background-image: url(images/useradd-32.png); } 
+div.button.logout   { background-image: url(images/userdel-32.png); }
+
+ /* --------------------------- ajax loader betöltő anim.gif ----------------- */
+ div.loader  {                   
+  display: none;              /* alapban rejtett */
+  z-index: 9998;     
+  margin: auto;
+  position: absolute; top: 0; left: 0; bottom: 0; right: 0;
+  width: 134px;
+  height:134px;
+  border:1px solid #cecece;
+  border-radius: 3px;
+  background-color: white;
+  box-shadow: 3px 3px 3px 0px rgba(190,190,190,0.75);
+}
+
+/*--------------------------------------------------------------
+# main_title Section
+--------------------------------------------------------------*/
+#main_title {
+  width: 100%;
+  height: 100%;
+  background: #37517e;
+  letter-spacing: 1px;
+}
+
+#main_title .container { padding-top: 40px; padding-bottom: 40px; }
+
+#main_title h1 {
+  margin: 0 0 10px 0;
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 56px;
+  color: #fff;
+}
+
+#main_title h2 {
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 50px;
+  font-size: 24px;
+}
+
+#main_title .btn-get-started {
+  font-family: "Jost", sans-serif;
+  font-weight: bold;
+  font-size: 16px;
+  display: inline-block;
+  padding: 10px 28px 11px 28px;
+  border-radius: 50px;
+  margin: 10px 0 0 0;
+  color: #fff;
+  background: #00758F;
+  cursor: pointer;
+}
+
+@media (max-width: 991px) {
+  #main_title                     { height: 100vh; text-align: center; }
+  #main_title .main_title-img     { text-align: center; }
+  #main_title .main_title-img img { width: 50%; }
+}
+
+@media (max-width: 768px) {
+  #main_title h1 {  font-size: 28px;  line-height: 36px; }
+  #main_title h2 {  font-size: 18px; line-height: 24px; margin-bottom: 30px; }
+  #main_title .main_title-img img { width: 70%; }
+}
+
+@media (max-width: 575px) {
+  #main_title .main_title-img img {  width: 80%; }
+  #main_title .btn-get-started { font-size: 16px; padding: 10px 24px 11px 24px; }
+}

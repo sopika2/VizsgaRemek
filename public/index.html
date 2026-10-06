@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="hu">
+
+<head>
+  <title>Egészségház v1.0</title>
+  <meta   charset="utf-8">
+  <meta   name="viewport" content="width=device-width, initial-scale=1">
+  <link   href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link   rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+  <link   href="style.css" rel="stylesheet">
+  <script src="common_egeszseghaz.js"></script>
+</head>
+
+<script type="text/javascript">
+  /*-----------------------------*/
+  $(document).ready(function() {
+      //ajax_get( "studio13webtemplatedoksi.html", '#main1', 0, true);    // doksi 
+      ajax_get( "banner.html", '#main1', 0, true);    // doksi 
+
+      $("#login1_modal_button").click(function() { login_show();  });
+      $("#user1_login_button").click(function()  { login();       });
+      $("#user1_logout_button").click(function() { logout()       });
+      $("#search1_field").keyup(function()       { search1_get()  });  
+      $("#menu1_button").click(function()        { $('#menu1_card').fadeToggle(300);   });
+      $("#search1_button").click(function()      { $('#search1_card').fadeToggle(300); });
+      $(document).keydown(function (e) {
+          if (e.keyCode === 113) {  $("#menu1_card").fadeToggle(300); }       // F2: menü
+          if (e.keyCode === 115) {  $("#search1_card").fadeToggle(300); }     // F4: search
+          if (e.keyCode === 119) {  login_show(); }                           // F8: login
+      });   
+      
+      $('#menu1_ul').html( menu_generator() );    /* common_egeszseghaz.js menu_json tömb feltöltése */
+
+      $("li.xmenu").click(function () 
+      {
+          var id = $(this).attr("id");                            // pl: "menu1_5"  
+          var i = id.substring(6);                                // balról vág: pl: "5" --> id="menu1_
+          var tip = menü_json[i].tip;
+          var url = menü_json[i].url;
+          if (tip == 0) { ajax_get( url, '#main1', 0, true);  }   // ajax html betöltése
+          if (tip == 1) {window.open(url, '').focus();  }         // teljes oldal    
+          if (tip == 2) {window.open(url, '_blank').focus();  }   // new tab 
+          $("#menu1_card").fadeToggle(300);  
+      });
+  });
+
+  /*  menü beállítása (jogosultságok), megjelenítése (forrás: glob. json asszoc. array) */
+  function menu_get() 
+  {
+     
+  }
+
+  /* ---------- login-logout modális ablak ---------  */ 
+  function login_show() 
+  { 
+    $('#login1_modal').modal('show');
+  }
+
+  /* --- a gyorskereső mezőbe gépelt karakterre fut ... */
+  function search1_get() 
+  {
+    var text = $('#search1_field').val();
+    $('#search1_card_body').html(text);
+    $('#search1_card').css("display", text.length === 0? 'none' : 'block' );
+    if ( text.length > 2)   // ennél rövidebbet nem keres (kell ez?)
+    {
+      /* ide jön a gyorskereső backend, pl. min. 3 karakter esetén. minta: https://netkazan.hu */
+    } 
+  }
+
+  /* --- felhasználó bejelentkezik. Neve megjelenik az id=login1_user TAG-ben --- */ 
+  function login() 
+  {
+    var login_json = ajax_post("login?"+$("#user1_form").serialize(), 1) ;  
+    // console.log(login_json);
+    if (login_json.maxcount === 1 && login_json.message === "ok") {  
+          $("#login1_user").html("login: "+login_json.rows[0].NEV );
+          $('#login1_user').prop('title', "["+login_json.rows[0].EMAIL+"]");
+          $('#login1_modal').modal('hide');
+          mySend({text:`Bejelentkezett: ${login_json.rows[0].NEV}!`, tip:"success", mp:3});
+      } else {    
+          mySend({text:`Hibás felhasználónév, vagy jelszó<br>Nincs is ilyen júzer!`, tip:"danger", mp:5});
+    }
+  }
+
+  /* ---- felhasználó kijelentkezik. Az id=login1_user TAG-ben "...senki ..." ---- */ 
+  function logout() 
+  {
+    myQuestion({text: `Kijelentkezés megerősítése...? `});
+      $("#myQuestion").on("click",".ok", function() {
+          var session_response = ajax_post("logout", 1) ;  
+          mySend({text:session_response, tip:"info", mp:3});
+          $("#login1_user").html("Login: még senki..." );
+          $('#login1_user').prop('title', "[...]");
+          $('#login1_modal').modal('hide');
+      });  
+  }
+
+</script>
+
+<body class="d-flex flex-column vh-100 m-0">
+
+  <!-- -------------------------- fejléc és menü ----------------------------------------- -->
+  <div class="fejléc d-flex justify-content-evenly gap-2 p-2 text-white">
+    <button id="menu1_button" type="button" class="btn btn-secondary me-3 bi bi-list dropdown-toggle" title="menü (F2)"></button>
+    <h4 class="my-auto">Gondozóház</h4>
+    <span class="navbar-text my-auto">SZ6-B<br>(SZ12 keret v:2026.04)</span>
+
+    <span id="login1_user" class="navbar-text " title="no login">Login: Még senki....</span>
+    <button id="login1_modal_button" type="button" class="btn btn-secondary me-3 bi bi-person-fill ms-auto" title="login (F8)"></button>
+  </div>
+
+  <!-- -------------------------- konténer  ----------------------------------------- -->
+  <div id="main1" class="flex-grow-1 overflow-auto">                      <!-- menu_json tip=0 URL kerül ide -->
+    <b>Telepítés:</b> npm install mysql2 express express-session<br />
+    <b>Start:</b> npm start<br />
+    <b>Elérés:</b> http://localhost:3000<br/>
+  </div>
+
+  <div class="lábléc p-2 text-white text-center"> 
+    <p>Szoftverfejlesztő - Webprogramozás keret | Csány László Technikum - 2026.</p>
+  </div>
+
+  <!-- -------------------------- login / logout modális ablak -------------------------------------- -->
+  <div class="modal fade" id="login1_modal" data-bs-backdrop="static">
+    <div class="modal-dialog modal-dialog-centered" style="opacity: 0.9;">
+      <div class="modal-content">
+        <div class="modal-header bg-secondary text-white">
+          <h3 class="modal-title">Bejelentkezés / Kijelentkezés</h3>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+            <form id="user1_form">
+              <div class="mb-3" >
+                <label for="user1_login_field" class="form-label">Felhasználó:</label>
+                <input type="email" class="form-control" id="user1_login_field" name="user1_login_field" placeholder="usernév" value="admin">
+              </div>
+              <div class="mb-3">
+                <label for="user1_passwd_field" class="form-label">Jelszó:</label>
+                <input type="password" class="form-control" id="user1_passwd_field" name="user1_passwd_field" placeholder="Jelszó" value="123456">
+              </div>
+            </form>
+        </div>
+        <div class="modal-footer">  
+            <div id="user1_login_button"  class="button login">Login</div>
+            <div id="user1_logout_button" class="button logout" >Logout</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- -------------------------- search card  ----------------------------------- -->
+  <div class="card" id="search1_card">
+    <div class="card-body" id="search1_card_body">
+      This is some text within a card body.
+    </div>
+  </div>
+
+   <!-- --------------------------menü card -------------------------------------- -->
+   <div class="card" id="menu1_card">
+    <div class="card-header"><h6>Menü</h6></div>
+    <div class="card-body">
+      <ul class="xmenu" id="menu1_ul">  <!-- menu_generator() tölti fel! -->  </ul> 
+    </div>
+    <div class="card-footer"><i>© Csány szoft. - 2026</i></div>
+  </div>
+
+  <div class="loader" id="loader1"><img src="images/ajaxloader3.gif" alt="loader"/></div>      <!-- ajax loader -->
+</body>
+</html>
