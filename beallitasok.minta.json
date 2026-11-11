@@ -1,0 +1,11 @@
+{
+    "port": 3000,
+    "session_secret": "ide_egy_hosszu_veletlen_szoveg",
+    "mysql": {
+        "host": "localhost",
+        "port": 3306,
+        "user": "root",
+        "password": "",
+        "database": "csany_zeg"
+    }
+}

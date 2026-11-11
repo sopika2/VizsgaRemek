@@ -3,19 +3,6 @@ html, body {
   margin: 0;
 }
 
-#search1_card {
-  position: fixed;
-  top: 52px;
-  width: 500px;  height: 400px;
-  left: 0; right: 0;
-  margin: auto;
-  z-index: 1000;
-  overflow: auto;  overflow-y: auto;
-  opacity:0.95; 
-  display: none;              /* alapban rejtett */
-  box-shadow: 11px 12px 21px 1px rgba(0,0,0,0.79);
-}
-
 #menu1_card {
   position: fixed;
   top: 52px;
@@ -43,13 +30,13 @@ li.xmenu:hover{ cursor: pointer;
                 color: white;
                 background-color:#00758F;   } 
 
-li.xmenu img  { padding-right: 16px; }       
+li.xmenu i    { padding-right: 12px; }       
 
 div.fejléc   {  background-color: #00758F; }
-div.lábléc   {  background-color: #00758F; height: 40px;}
+div.lábléc   {  background-color: #00758F; }
 
-div.button  { 
-  box-sizing: border-box; float:left; display: table-cell;
+.button  { 
+  box-sizing: border-box; display: inline-block;
   background-repeat: no-repeat;
   background-position: 50% 90%; 
   background-color: #ffffcc;
@@ -58,19 +45,26 @@ div.button  {
   border-radius: 3px; 
   cursor: pointer;  
   vertical-align: bottom;
-  border: 1px solid #D7D7D7;   
+  border: 1px solid #D7D7D7;
+  color: inherit;
   text-align: center; font-weight:bold; font-size:14px; } 
 
-div.button.keres    { background-image: url(images/find-32.png);  }   /* html: class="button keres"  */
-div.button.info     { background-image: url(images/info-32.png);  }
-div.button.help     { background-image: url(images/help-32.png);  }
-div.button.reload   { background-image: url(images/reload-32.png);}
-div.button.torol    { background-image: url(images/torol-32.png); }
-div.button.uj       { background-image: url(images/add-32.png);   } 
-div.button.cancel   { background-image: url(images/no-32.png);    } 
-div.button.ok       { background-image: url(images/ok-32.png);    }
-div.button.login    { background-image: url(images/useradd-32.png); } 
-div.button.logout   { background-image: url(images/userdel-32.png); }
+.button.keres    { background-image: url(images/find-32.png);  }   /* html: <button class="button keres"> */
+.button.info     { background-image: url(images/info-32.png);  }
+.button.help     { background-image: url(images/help-32.png);  }
+.button.reload   { background-image: url(images/reload-32.png);}
+.button.torol    { background-image: url(images/torol-32.png); }
+.button.uj       { background-image: url(images/add-32.png);   }
+.button.modosit  { background-image: url(images/edit_32.png);  }
+.button.ment     { background-image: url(images/okment-32.png);}
+.button.zaras    { background-image: url(images/lakat-32.png); }
+.button.export   { background-image: url(images/xls-32.png);   }
+.button.nyomtat  { background-image: url(images/print-32.png); }
+.button.cancel   { background-image: url(images/no-32.png);    }
+.button.ok       { background-image: url(images/ok-32.png);    }
+.button.login    { background-image: url(images/useradd-32.png); }
+.button.logout   { background-image: url(images/userdel-32.png); }
+.button:disabled { opacity: 0.4; cursor: not-allowed; }
 
  /* --------------------------- ajax loader betöltő anim.gif ----------------- */
  div.loader  {                   
@@ -113,7 +107,6 @@ div.button.logout   { background-image: url(images/userdel-32.png); }
 }
 
 #main_title .btn-get-started {
-  font-family: "Jost", sans-serif;
   font-weight: bold;
   font-size: 16px;
   display: inline-block;

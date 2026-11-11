@@ -1,18 +1,17 @@
 {
-  "name": "egeszseghaz_project",
+  "name": "gondozohaz_sz6b",
   "version": "1.0.0",
-  "main": "datamodule_mysql2.js",
+  "description": "Gondozóház - ellátások nyilvántartása (SZ6-B)",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "keywords": [],
-  "author": "konye@csany-zeg.hu",
+  "author": "sopika2",
   "license": "ISC",
   "dependencies": {
     "express": "^4.22.1",
     "express-session": "^1.19.0",
-    "mysql2": "^3.22.0",
-    "util": "^0.12.5"
-  },
-  "description": ""
+    "mysql2": "^3.22.0"
+  }
 }

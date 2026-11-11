@@ -1,96 +1,71 @@
 /*
-  mysql2 async - await osztály
+  mysql2 async - await osztály, pool kapcsolattal
   constructor -->  def paraméter, amely felülírható példányosításnál: const DM = new DataModule( {port:9406, password:"pite"} );
-  let sjson =  runQuery(sql) --> sql select, méri a rekordszámot is.  return: { "message":msg, "maxcount":maxcount, "rows":res2 }
-  let tjson =  runExecute(sql, req, név) --> sql insert, update, select. a req és a név a naplózáshoz kell.
+  let sjson = await runQuery(sql, param)            --> sql select. return: { "message":msg, "maxcount":rekordszám, "rows":[...] }
+  let tjson = await runExecute(sql, param, req)     --> sql insert, update, delete + naplózás. return: { "message":msg, "affectedRows":db, "insertId":id }
 
+  A user inputot "?" paraméterként kell átadni, NEM az sql stringbe fűzve! (sql injection)
+     pl: DM.runQuery("select * from paciens where STATUS = ? and SURGOS = ?", ["varakozo", 1]);
 */
 
 'use strict';
-const header1 = 'Content-Type';
-const header2 = 'application/json; charset=UTF-8';
 const mysql = require('mysql2/promise');
+
+const PROJEKT = 'SZ6-B';                                       // a napló COMMENT mezőjébe kerül
 
 class DataModule {
 
     constructor(mysql_conn = {}) {
         this.mysql_conn = {
-            host: mysql_conn.host         || 'localhost',         
-            user: mysql_conn.user         || 'root',               
-            port: mysql_conn.port         || "3306",
-            password: mysql_conn.password || '123456',
-            database: mysql_conn.database || 'sz12_egeszseghaz'  
+            host:     mysql_conn.host     || 'localhost',
+            user:     mysql_conn.user     || 'root',
+            port:     mysql_conn.port     || 3306,
+            password: mysql_conn.password || '',
+            database: mysql_conn.database || 'csany_zeg',
+            dateStrings: true,                                 // dátum stringként jön ('2026-11-02'), így nincs időzóna eltolódás
+            connectionLimit: 10
         };
+        this.pool = mysql.createPool(this.mysql_conn);
     }
 
-    _strEscape(s) 
-    { 
-        return s.trim().replaceAll("'","").replaceAll("\"","").replaceAll("\t","").replaceAll("\\","").replaceAll("`","");
-    }
-
-    _vagUtolso(s, sub) 
-    {
-        let poz = s.toUpperCase().lastIndexOf(sub.toUpperCase());
-        return poz === -1 ? s : s.substring(0, poz);
-    };
- 
-    async runQuery(sql) {                                      // SELECT sql (+ count)
-        let maxcount = 0;                                      // rekordszám
-        let msg = "ok";
-        let sqlC =  this._vagUtolso(sql, ";");                 // a "count"-hoz a végén nem lehet ";"
-            sqlC =  this._vagUtolso(sqlC, " LIMIT ");          // "limit" sem kell, vagy marad az előző, ha nincs...
-            sqlC =  this._vagUtolso(sqlC, " ORDER BY ");       // "order" sem kell, vagy marad az előző, ha nincs...
-        let json_data, conn, res1, res2=[];
-
+    async runQuery(sql, param = []) {                          // SELECT sql
         try {
-            conn = await mysql.createConnection(this.mysql_conn);
-            [res1] = await conn.execute(`select count(*) as db from (${sqlC}) as tabla;`);  // tömb 0. eleme
-            maxcount = res1[0].db | 0;                         // :-) 
-            if (maxcount > 0) {  
-              [res2] = await conn.execute(sql);   
-            }
+            const [rows] = await this.pool.query(sql, param);
+            return { "message":"ok", "maxcount":rows.length, "rows":rows };
         } catch (err) {
-            msg = err.sqlMessage; maxcount = -1; console.error('Hiba:', err); 
-        } finally {
-            await conn.end();                                     // !!! conn error esetet nem kezeli 
-            json_data = JSON.stringify({ "message":msg, "maxcount":maxcount, "rows":res2 });  // rest-api
+            console.error('Hiba:', err.message);
+            return { "message":err.sqlMessage || err.message, "maxcount":-1, "rows":[] };
         }
-        return json_data;
     }
 
-    async runExecute(sql, req, loginuser) {                     // insert, update, delete sql
+    async runExecute(sql, param = [], req = null) {            // insert, update, delete sql
         let msg = "ok";
-        let json_data, conn, res1, jrn1, jrn;
-        let jrn_text = "";
-        let userx = "- no login -";
-        if (loginuser && loginuser !== "") { userx = loginuser; } 
-
-        try 
-        {
-            conn = await mysql.createConnection(this.mysql_conn); 
-            res1 = await conn.execute(sql);  
-            jrn_text = JSON.stringify(res1);
-            console.log("execute: " + jrn_text);
-        } 
-        catch (err) 
-        {   msg = err.sqlMessage; console.error('Hiba:', err); 
-        } 
-        finally 
-        {    
-            jrn_text = (sql.replace(/\s\s+/g, ' ')+"\n"+jrn_text+"\n"+msg).replaceAll("\"","'");
-            jrn  = `insert into naplo (USER, URL, SQLX) values ("${userx}","${req.socket.remoteAddress}${req.originalUrl} ","${jrn_text}");`;      
-            jrn1 = await conn.execute(jrn); 
-            await conn.end();                                    
-            json_data = JSON.stringify({"message":msg, "rows":res1 });  // rest-api
+        let eredmeny = {};
+        try {
+            [eredmeny] = await this.pool.query(sql, param);
+        } catch (err) {
+            msg = err.sqlMessage || err.message;
+            console.error('Hiba:', err.message);
         }
-        return json_data;
-    } 
+        await this._naplo(sql, param, req, msg, eredmeny);
+        return { "message":msg, "affectedRows":eredmeny.affectedRows || 0, "insertId":eredmeny.insertId || 0 };
+    }
 
-    async sendJson_toFrontend (res, sql) {
-        let json_data = await this.runQuery(sql);
-        res.set(header1, header2);
-        res.send(json_data);
-        res.end();
+    /* minden adatkarbantartás a naplóba kerül. req nélkül (automatikus művelet) a "RENDSZER" a végrehajtó
+       !!! a mezőneveket a végleges naplo táblához kell igazítani */
+    async _naplo(sql, param, req, msg, eredmeny) {
+        let userx = "RENDSZER";
+        let url   = "";
+        if (req) {
+            userx = req.session && req.session.user ? req.session.user.NEV : "- no login -";
+            url   = req.socket.remoteAddress + req.originalUrl;
+        }
+        let sqlx = sql.replace(/\s\s+/g, ' ') + "\n" + JSON.stringify(param) + "\n" + JSON.stringify(eredmeny) + "\n" + msg;
+        try {
+            await this.pool.query("insert into naplo (USER, URL, SQLX, COMMENT) values (?, ?, ?, ?)", [userx, url, sqlx, PROJEKT]);
+        } catch (err) {
+            console.error('Napló hiba:', err.message);
+        }
     }
 }
 
