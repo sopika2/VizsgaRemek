@@ -1,0 +1,37 @@
+<!-- Rendszerparaméterek (config tábla). Megnézni bárki tudja, módosítani csak ADMIN -->
+<div class="container-fluid p-2">
+  <h4 class="mb-2">Beállítások</h4>
+  <p class="text-muted small" id="cfg_info"></p>
+  <div id="cfg_tabla"></div>
+</div>
+
+<script type="text/javascript">
+  $(document).ready(function() {
+      $("#cfg_info").text(jogosult(3) ? "Az érték átírása után a Mentés gombbal lehet menteni. A díjszámítás azonnal az új értékkel számol, a lezárt hónapok nem változnak."
+                                      : "Módosítani csak ADMIN jogosultsággal lehet.");
+      cfg_betolt();
+
+      $("#cfg_tabla").on("click", ".cfg_ment", async function() {
+          var field = $(this).data("field");
+          var value = $(`#cfg_tabla input[data-field="${field}"]`).val();
+          var json  = await ajax_put("config/" + encodeURIComponent(field), { value: value });
+          if (json) { mySend({text:`${field} = ${value} elmentve.`, tip:"success", mp:3}); }
+      });
+  });
+
+  async function cfg_betolt()
+  {
+    var json = await ajax_getjson("config");
+    var szerk = jogosult(3);
+    tablazat("#cfg_tabla", json ? json.rows : [], [
+        { mezo:"FIELD",      cim:"Paraméter" },
+        { mezo:"VALUE",      cim:"Érték", formaz: function(e, sor) {
+              if (!szerk) { return esc(e); }
+              return `<div class="input-group input-group-sm" style="min-width: 160px;">
+                        <input type="text" class="form-control" data-field="${esc(sor.FIELD)}" value="${esc(e)}">
+                        <button type="button" class="btn btn-outline-success cfg_ment" data-field="${esc(sor.FIELD)}">Mentés</button>
+                      </div>`; } },
+        { mezo:"DESCRIPTOR", cim:"Leírás", mobil:false }
+    ]);
+  }
+</script>

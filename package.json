@@ -4,7 +4,8 @@
   "description": "Gondozóház - ellátások nyilvántartása (SZ6-B)",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "node --test"
   },
   "keywords": [],
   "author": "sopika2",
