@@ -5,7 +5,7 @@
   let tjson = await runExecute(sql, param, req)     --> sql insert, update, delete + naplózás. return: { "message":msg, "affectedRows":db, "insertId":id }
 
   A user inputot "?" paraméterként kell átadni, NEM az sql stringbe fűzve! (sql injection)
-     pl: DM.runQuery("select * from paciens where STATUS = ? and SURGOS = ?", ["varakozo", 1]);
+     pl: DM.runQuery("select * from paciensek where STATUS = ? and SURGOS_VARAKOZO = ?", ["várakozó", "Y"]);
 */
 
 'use strict';
@@ -21,7 +21,7 @@ class DataModule {
             user:     mysql_conn.user     || 'root',
             port:     mysql_conn.port     || 3306,
             password: mysql_conn.password || '',
-            database: mysql_conn.database || 'csany_zeg',
+            database: mysql_conn.database || 'studio13_gondozohaz',
             dateStrings: true,                                 // dátum stringként jön ('2026-11-02'), így nincs időzóna eltolódás
             connectionLimit: 10
         };
@@ -51,8 +51,27 @@ class DataModule {
         return { "message":msg, "affectedRows":eredmeny.affectedRows || 0, "insertId":eredmeny.insertId || 0 };
     }
 
-    /* minden adatkarbantartás a naplóba kerül. req nélkül (automatikus művelet) a "RENDSZER" a végrehajtó
-       !!! a mezőneveket a végleges naplo táblához kell igazítani */
+    /* több sql egy tranzakcióban (pl. státuszváltás: paciensek + ellatasi_idoszak). Ha egy is hibás, egyik sem marad meg.
+       lista: [ {sql:"...", param:[...]}, ... ]   return: { "message":msg } */
+    async runTransaction(lista, req = null) {
+        let msg = "ok";
+        const conn = await this.pool.getConnection();
+        try {
+            await conn.beginTransaction();
+            for (const s of lista) { await conn.query(s.sql, s.param); }
+            await conn.commit();
+        } catch (err) {
+            await conn.rollback();
+            msg = err.sqlMessage || err.message;
+            console.error('Hiba:', err.message);
+        } finally {
+            conn.release();
+        }
+        for (const s of lista) { await this._naplo(s.sql, s.param, req, msg, {}); }
+        return { "message":msg };
+    }
+
+    /* minden adatkarbantartás a naplóba kerül (naplo: USER, URL, SQLX, COMMENT). req nélkül (automatikus művelet) a "RENDSZER" a végrehajtó */
     async _naplo(sql, param, req, msg, eredmeny) {
         let userx = "RENDSZER";
         let url   = "";

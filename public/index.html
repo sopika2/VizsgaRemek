@@ -51,11 +51,14 @@
     $('#login1_modal').modal('show');
   }
 
-  /* --- a bejelentkezett user neve az id=login1_user TAG-be (null: senki) --- */
+  /* --- a bejelentkezett user neve az id=login1_user TAG-be (null: senki), a menü a jogai szerint újragenerálódik --- */
   function user_kiir(user)
   {
-    $("#login1_user").html(user ? user.NEV : "Login: még senki..." );
-    $('#login1_user').prop('title', user ? `[${user.EMAIL}] ${user.JOGOSULTSAG}` : "[...]");
+    aktUser = user;
+    var jogok = user ? ["ADMIN", "ADMIN_A", "ADMIN_B"].filter(j => user[j] == 'Y').join(", ") : "";
+    $("#login1_user").text(user ? user.NEV : "Login: még senki..." );
+    $('#login1_user').prop('title', user ? `[${user.LOGIN}] ${jogok || "csak megtekintés"}` : "[...]");
+    $('#menu1_ul').html( menu_generator() );
   }
 
   async function session_get()
@@ -83,6 +86,7 @@
         var json = await ajax_post("logout");
         if (json) { mySend({text:json.message, tip:"info", mp:3}); }
         user_kiir(null);
+        ajax_get( "banner.html", '#main1');                                // a megnyitott lista se maradjon látható
         $('#login1_modal').modal('hide');
     }});
   }
@@ -120,7 +124,7 @@
             <form id="user1_form">
               <div class="mb-3" >
                 <label for="user1_login_field" class="form-label">Felhasználó:</label>
-                <input type="text" class="form-control" id="user1_login_field" name="user1_login_field" placeholder="email" autocomplete="username">
+                <input type="text" class="form-control" id="user1_login_field" name="user1_login_field" placeholder="login név" autocomplete="username">
               </div>
               <div class="mb-3">
                 <label for="user1_passwd_field" class="form-label">Jelszó:</label>

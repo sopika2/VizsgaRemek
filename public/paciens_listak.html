@@ -1,0 +1,168 @@
+<!-- Páciens listák státusz szerint + státuszváltás. Az index.html #main1 TAG-jébe töltődik (ajax_get) -->
+<div class="container-fluid p-2">
+  <h4 class="mb-2">Páciens listák</h4>
+
+  <ul class="nav nav-tabs" id="pl_fulek">
+    <li class="nav-item"><a class="nav-link active" href="#" data-status="várakozó">Várakozók</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-status="előgondozott">Előgondozottak</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-status="ellátott">Ellátottak</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-status="távozott">Távozottak</a></li>
+    <li class="nav-item"><a class="nav-link" href="#" data-status="">Mind</a></li>
+  </ul>
+
+  <div class="d-flex flex-wrap align-items-center gap-2 my-2">
+    <input type="text" id="pl_kereso" class="form-control" style="max-width: 260px;" placeholder="Keresés: név vagy TAJ...">
+    <span id="pl_db" class="text-muted small"></span>
+    <div class="ms-auto">
+      <button type="button" id="pl_elore"   class="button ok"     disabled title="következő státusz">Tovább</button>
+      <button type="button" id="pl_vissza"  class="button cancel" disabled title="előző státusz">Vissza</button>
+      <button type="button" id="pl_ujra"    class="button uj"     disabled title="távozott páciens újrafelvétele">Újra</button>
+      <button type="button" id="pl_frissit" class="button reload" title="lista frissítése">Frissít</button>
+    </div>
+  </div>
+
+  <div id="pl_tabla"></div>
+</div>
+
+<!-- -------------------------- státuszváltás / újrafelvétel ablak -------------------------------------- -->
+<div class="modal fade" id="pl_modal" data-bs-backdrop="static">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-secondary text-white">
+        <h3 class="modal-title" id="pl_modal_cim">Státuszváltás</h3>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <p class="fw-bold mb-1" id="pl_modal_nev"></p>
+        <p id="pl_modal_valtas"></p>
+        <label for="pl_modal_datum" class="form-label">Dátum:</label>
+        <input type="date" id="pl_modal_datum" class="form-control">
+        <div class="form-text" id="pl_modal_sugo"></div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" id="pl_modal_ok" class="button ok">OK</button>
+        <button type="button" class="button cancel" data-bs-dismiss="modal">mégse</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="text/javascript">
+  var pl_status = "várakozó";                   // aktuális fül
+  var pl_rows   = [];                           // a szerverről jött lista (szűrés előtt)
+  var pl_sor    = null;                         // kijelölt páciens
+
+  var PL_SORREND = ["várakozó", "előgondozott", "ellátott", "távozott"];
+  var PL_DATUM   = {"várakozó":"VARAKOZO_DATUM", "előgondozott":"ELOGOND_DATUM", "ellátott":"ELLATOTT_DATUM", "távozott":"TAVOZOTT_DATUM"};
+
+  /* oszlopok; st: melyik fülön látszik ("" = Mind fül) */
+  var pl_oszlopok = [
+    { mezo:"NEV",            cim:"Név",            st:"*" },
+    { mezo:"TAJ",            cim:"TAJ",            st:"*", mobil:false },
+    { mezo:"SZULDATUM",      cim:"Születés",       st:"*", mobil:false },
+    { mezo:"STATUS",         cim:"Státusz",        st:"" },
+    { mezo:"SURGOS_VARAKOZO",cim:"Sürgős",         st:"várakozó,",
+      formaz: function(e) { return e == 'Y' ? '<span class="badge bg-danger">sürgős</span>' : ''; } },
+    { mezo:"VARAKOZO_DATUM", cim:"Várakozó óta",   st:"várakozó,előgondozott," },
+    { mezo:"ELOGOND_DATUM",  cim:"Előgondozás",    st:"előgondozott,ellátott," },
+    { mezo:"ELLATOTT_DATUM", cim:"Ellátott óta",   st:"ellátott,távozott," },
+    { mezo:"TAVOZOTT_DATUM", cim:"Távozott",       st:"távozott," },
+    { mezo:"NAPIDIJ",        cim:"Napidíj",        st:"*", tip:"ft" },
+    { mezo:"HAVIDIJ",        cim:"Havidíj (teljes hó)", st:"*", tip:"ft", mobil:false }
+  ];
+
+  $(document).ready(function() {
+      $("#pl_elore, #pl_vissza, #pl_ujra").toggle(jogosult(2));      // jogosultság nélkül csak megtekintés
+      pl_betolt();
+
+      $("#pl_fulek .nav-link").click(function(e) {
+          e.preventDefault();
+          $("#pl_fulek .nav-link").removeClass("active");
+          $(this).addClass("active");
+          pl_status = $(this).data("status");
+          pl_betolt();
+      });
+      $("#pl_kereso").on("input", function() { pl_kiir(); });
+      $("#pl_frissit").click(function() { pl_betolt(); });
+      $("#pl_elore").click(function()   { pl_elore_ablak(); });
+      $("#pl_vissza").click(function()  { pl_vissza(); });
+      $("#pl_ujra").click(function()    { pl_ujra_ablak(); });
+  });
+
+  async function pl_betolt()
+  {
+    var json = await ajax_getjson("paciensek?status=" + encodeURIComponent(pl_status));
+    pl_rows = json ? json.rows : [];
+    pl_kiir();
+  }
+
+  /* keresés a betöltött listában, majd táblázat */
+  function pl_kiir()
+  {
+    var mit  = $("#pl_kereso").val().toLowerCase();
+    var rows = pl_rows.filter(p => p.NEV.toLowerCase().includes(mit) || String(p.TAJ).includes(mit));
+    var oszl = pl_oszlopok.filter(o => o.st == "*" || o.st.split(",").includes(pl_status));
+    $("#pl_db").text(`${rows.length} páciens`);
+    tablazat("#pl_tabla", rows, oszl, { kattint: pl_kijelol });
+    pl_kijelol(null);
+  }
+
+  function pl_kijelol(sor)
+  {
+    pl_sor = sor;
+    $("#pl_elore").prop("disabled",  !sor || sor.STATUS == "távozott");
+    $("#pl_vissza").prop("disabled", !sor || sor.STATUS == "várakozó");
+    $("#pl_ujra").prop("disabled",   !sor || sor.STATUS != "távozott");
+  }
+
+  /* ablak: dátum felajánlás (ma), nem lehet jövőbeli és nem lehet korábbi az előző lépés dátumánál */
+  function pl_ablak(cim, valtas, minDatum, ok)
+  {
+    var ma = new Date().toLocaleDateString('sv-SE');
+    $("#pl_modal_cim").text(cim);
+    $("#pl_modal_nev").text(pl_sor.NEV);
+    $("#pl_modal_valtas").html(valtas);
+    $("#pl_modal_datum").val(ma).attr("max", ma).attr("min", minDatum || "");
+    $("#pl_modal_sugo").text(minDatum ? `Legkorábban: ${minDatum}, legkésőbb: ma.` : "Legkésőbb: ma.");
+    $("#pl_modal_ok").off("click").on("click", async function() {
+        var datum = $("#pl_modal_datum").val();
+        if (!datum || datum > ma || (minDatum && datum < minDatum)) {
+            mySend({text:"A dátum nem megfelelő!", tip:"warning", mp:4});
+            return;
+        }
+        if (await ok(datum)) { $("#pl_modal").modal("hide"); }
+    });
+    $("#pl_modal").modal("show");
+  }
+
+  function pl_elore_ablak()
+  {
+    var uj = PL_SORREND[PL_SORREND.indexOf(pl_sor.STATUS) + 1];
+    pl_ablak("Státuszváltás", `<b>${esc(pl_sor.STATUS)}</b> &rarr; <b>${esc(uj)}</b>`, pl_sor[PL_DATUM[pl_sor.STATUS]],
+        async function(datum) {
+            var json = await ajax_put(`paciensek/${pl_sor.ID_PACIENS}/statusz`, { irany:"elore", datum:datum });
+            if (json) { mySend({text:`${pl_sor.NEV}: ${uj}`, tip:"success", mp:3}); pl_betolt(); }
+            return json != null;
+        });
+  }
+
+  function pl_vissza()
+  {
+    var regi = PL_SORREND[PL_SORREND.indexOf(pl_sor.STATUS) - 1];
+    var sor  = pl_sor;
+    myQuestion({text: `${esc(sor.NEV)}: <b>${esc(sor.STATUS)}</b> &rarr; <b>${esc(regi)}</b> visszaléptetés?`, ok: async function() {
+        var json = await ajax_put(`paciensek/${sor.ID_PACIENS}/statusz`, { irany:"vissza" });
+        if (json) { mySend({text:`${sor.NEV}: ${regi}`, tip:"success", mp:3}); pl_betolt(); }
+    }});
+  }
+
+  function pl_ujra_ablak()
+  {
+    pl_ablak("Újrafelvétel", `<b>távozott</b> &rarr; <b>várakozó</b> (új ellátási időszak, a régi adatok megmaradnak)`, pl_sor.TAVOZOTT_DATUM,
+        async function(datum) {
+            var json = await ajax_post(`paciensek/${pl_sor.ID_PACIENS}/ujrafelvetel`, { datum:datum });
+            if (json) { mySend({text:`${pl_sor.NEV}: újra várakozó`, tip:"success", mp:3}); pl_betolt(); }
+            return json != null;
+        });
+  }
+</script>
